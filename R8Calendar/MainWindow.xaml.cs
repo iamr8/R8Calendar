@@ -30,6 +30,9 @@ namespace R8Calendar
         // Theme
         private bool IsDark { get; set; }
 
+        private string CurrentEventDay { get; set; }
+        private string CurrentEventText { get; set; }
+
         #region Theme Details
 
         private double CurrentThemeThemeNoiseRatioInt { get; set; }
@@ -51,6 +54,10 @@ namespace R8Calendar
         public MainWindow()
         {
             InitializeComponent();
+            //var wi = SystemParameters.WorkArea.Width;
+            //var he = SystemParameters.WorkArea.Height;
+            //Left = wi - ActualWidth - 50;
+            //Top = he - ActualHeight - 50;
             Loaded += MainWindow_Loaded;
         }
 
@@ -66,6 +73,7 @@ namespace R8Calendar
             PageViewContainer.Opacity = EventOffOpacity;
             IsDark = false;
             SetTheme();
+
             // http://tourismtime.ir/api/eventall
         }
 
@@ -342,25 +350,48 @@ namespace R8Calendar
         {
             if (@event != null)
             {
-                EventDay.Text = $"{thisDayOfWeek.GetDisplay()} {persianDay} {MonthsName.Persian(persianMonth)} {persianYear}";
-                EventText.Text = string.Join(Environment.NewLine, @event.Events.ToArray());
+                CurrentEventDay = $"{thisDayOfWeek.GetDisplay()} {persianDay} {MonthsName.Persian(persianMonth)} {persianYear}";
+                CurrentEventText = string.Join(Environment.NewLine, @event.Events.ToArray());
                 OpenEvent();
             }
             else
             {
-                CloseEvent();
+                ClosePanel();
             }
+        }
+
+        private void OpenPanel<T>(T page, Func<T, double, Thickness> doAfter) where T : Page
+        {
+            if (!(typeof(T) != typeof(Page))) return;
+            var finalHeight = doAfter.Invoke(page, ActualHeight);
+            PageViewer.Content = null;
+            PageViewer.Navigate(page);
+            Backdrop.Visibility = Visibility.Visible;
+            AnimatePanel(finalHeight, EventOnOpacity, EventBackdropOpacity);
         }
 
         private void OpenEvent()
         {
-            Backdrop.Visibility = Visibility.Visible;
-
-            var eventOpenedPosition = new Thickness(20, ActualHeight - EventDay.DesiredSize.Height - (20 * EventText.CountLines()) - 45, 20, 0);
-            AnimateEvent(eventOpenedPosition, EventOnOpacity, EventBackdropOpacity);
+            OpenPanel(new Event(), (page, parentHeight) =>
+            {
+                page.EventDay.Text = CurrentEventDay;
+                page.EventText.Text = CurrentEventText;
+                var eventTitleHeight = page.EventDay.DesiredSize.Height + page.EventDay.Margin.Top +
+                                       page.EventDay.Margin.Bottom;
+                var eventsApproxHeight =
+                    (page.EventText.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None).Length * 22) +
+                    page.EventText.Margin.Top + page.EventText.Margin.Bottom;
+                return new Thickness(20, parentHeight - eventTitleHeight - eventsApproxHeight - 40, 20, 0);
+            });
         }
 
-        private void AnimateEvent(Thickness finalMove, double eventOpacity, double backdropOpacity)
+        private void OpenSetting()
+        {
+            OpenPanel(new Setting(),
+                (page, parentHeight) => new Thickness(20, parentHeight - page.ParentGrid.DesiredSize.Height, 20, 0));
+        }
+
+        private void AnimatePanel(Thickness finalMove, double eventOpacity, double backdropOpacity)
         {
             var easing = new CircleEase { EasingMode = EasingMode.EaseInOut };
 
@@ -368,16 +399,16 @@ namespace R8Calendar
             PageViewContainer.BeginAnimation(OpacityProperty, new DoubleAnimation(PageViewContainer.Opacity, eventOpacity, EventAnimationDuration) { EasingFunction = easing });
             Backdrop.BeginAnimation(OpacityProperty, new DoubleAnimation(Backdrop.Opacity, backdropOpacity, EventAnimationDuration) { EasingFunction = easing });
 
-            var eventTextOpaAnim = new DoubleAnimation(EventText.Opacity, eventOpacity, EventAnimationDuration) { EasingFunction = easing };
-            EventText.BeginAnimation(OpacityProperty, eventTextOpaAnim);
-            EventDay.BeginAnimation(OpacityProperty, eventTextOpaAnim);
+            //var eventTextOpaAnim = new DoubleAnimation(EventText.Opacity, eventOpacity, EventAnimationDuration) { EasingFunction = easing };
+            //EventText.BeginAnimation(OpacityProperty, eventTextOpaAnim);
+            //EventDay.BeginAnimation(OpacityProperty, eventTextOpaAnim);
         }
 
-        private void CloseEvent()
+        private void ClosePanel()
         {
-            EventDay.Text = string.Empty;
-            EventText.Text = string.Empty;
-            AnimateEvent(EventClosedPosition, EventOffOpacity, 0);
+            CurrentEventDay = string.Empty;
+            CurrentEventText = string.Empty;
+            AnimatePanel(EventClosedPosition, EventOffOpacity, 0);
             var timer = new DispatcherTimer { Interval = EventAnimationDuration };
             timer.Start();
             timer.Tick += delegate
@@ -389,7 +420,7 @@ namespace R8Calendar
 
         private void Backdrop_OnMouseDown(object sender, MouseButtonEventArgs e)
         {
-            CloseEvent();
+            ClosePanel();
         }
 
         private void BtnExit_OnClick(object sender, RoutedEventArgs e)
@@ -469,7 +500,8 @@ namespace R8Calendar
 
         private void BtnChangeTheme_OnClick(object sender, RoutedEventArgs e)
         {
-            SetTheme();
+            //SetTheme();
+            OpenSetting();
         }
 
         private void TodayDate_OnClick(object sender, RoutedEventArgs e)

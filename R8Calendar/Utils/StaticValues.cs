@@ -10,7 +10,7 @@ namespace R8Calendar.Utils
             public const double ThemeBlurinessOpacity = 0.6;
             public const double ThemeBlurinessRatio = 0.3;
             public static readonly SolidColorBrush TodayForecolor = Brushes.Black;
-            public static readonly SolidColorBrush ChangeMonth = Brushes.Gray;
+            public static readonly SolidColorBrush ChangeMonth = Brushes.DimGray;
             public static readonly SolidColorBrush Separator = new SolidColorBrush(new Color
             {
                 A = 30,
