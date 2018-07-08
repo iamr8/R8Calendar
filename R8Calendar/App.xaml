@@ -4,6 +4,13 @@
              xmlns:local="clr-namespace:R8Calendar"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Theme/DayItemTheme.xaml" />
+                <ResourceDictionary Source="Theme/TodayTheme.xaml" />
+                <ResourceDictionary Source="Theme/FuncButtonTheme.xaml" />
+                <ResourceDictionary Source="Theme/ChangeMonthTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

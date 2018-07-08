@@ -5,8 +5,138 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:R8Calendar"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        
+        WindowStyle="None"
+Background="Transparent"
+        MouseDown="MainWindow_OnMouseDown"
+        Title="MainWindow" Height="530" Width="410" ResizeMode="NoResize" AllowsTransparency="True">
+    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Border CornerRadius="6"  Background="White" x:Name="ThemeNoise" Opacity="0.7" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border.Effect>
+                <local:NoiseEffect Ratio="0.2" x:Name="ThemeNoiseRatio" />
+            </Border.Effect>
+        </Border>
+        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40" />
+                <RowDefinition Height="6" />
+                <RowDefinition Height="100" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="50" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="50" />
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="BtnChangeTheme" Style="{StaticResource FuncThemme}" Click="BtnChangeTheme_OnClick" Content="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" Foreground="DimGray" />
+                    <Button Grid.Column="1" Style="{StaticResource TodayThemme}" Content="امروز" Click="TodayDate_OnClick" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" x:Name="TodayDate" FontFamily="IRANSansWeb(FaNum) Medium" />
+                    <Button Grid.Column="2" Style="{StaticResource FuncThemme}" Click="BtnExit_OnClick" Content="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" Foreground="DimGray" />
+                </Grid>
+            </Grid>
+            <Grid Grid.Row="1">
+                <Separator Background="Silver" x:Name="Separator" VerticalAlignment="Top" />
+            </Grid>
+            <Grid Grid.Row="2" HorizontalAlignment="Stretch" Height="70" VerticalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="50" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="50" />
+                </Grid.ColumnDefinitions>
+                <Button Style="{StaticResource ChangeMonthTheme}" Foreground="White"  x:Name="BtnNextMonth" Click="BtnNextMonth_OnClick" Content="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z" />
+                <Grid Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock HorizontalAlignment="Stretch" Foreground="White" x:Name="PersianTitle" VerticalAlignment="Center" Text="اردیبهشت 1397" FontSize="13"  TextAlignment="Center" FontFamily="IRANSansWeb(FaNum) Bold" TextOptions.TextHintingMode="Animated" />
+                    <TextBlock Grid.Row="1" x:Name="HijriTitle" Foreground="White" HorizontalAlignment="Stretch" VerticalAlignment="Center" Text="May - June 2017"  TextAlignment="Center" FontFamily="IRANSansWeb" />
+                    <TextBlock Grid.Row="2" x:Name="GregorianTitle" Foreground="White" HorizontalAlignment="Stretch" VerticalAlignment="Center" Text="May - June 2017"  TextAlignment="Center" FontFamily="IRANSansWeb" />
+                </Grid>
+                <Button Grid.Column="2" Style="{StaticResource ChangeMonthTheme}" Foreground="White"  x:Name="BtnPrevMonth" Click="BtnPrevMonth_OnClick" Content="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z" />
+            </Grid>
+            <Grid Grid.Row="3">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="30" />
+                    <RowDefinition Height="20" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Rectangle Fill="Black" Opacity="0.3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    <Rectangle.Effect>
+                        <local:NoiseEffect Ratio="0.10" />
+                    </Rectangle.Effect>
+                </Rectangle>
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="ج" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Center" FontFamily="IRANSansWeb(FaNum) Medium" />
+                    <TextBlock Grid.Column="1" Text="پ" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Center" FontFamily="IRANSansWeb(FaNum) Medium" />
+                    <TextBlock Grid.Column="2" Text="چ" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Center" FontFamily="IRANSansWeb(FaNum) Medium" />
+                    <TextBlock Grid.Column="3" Text="س" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Center" FontFamily="IRANSansWeb(FaNum) Medium" />
+                    <TextBlock Grid.Column="4" Text="د" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Center" FontFamily="IRANSansWeb(FaNum) Medium" />
+                    <TextBlock Grid.Column="5" Text="ی" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Center" FontFamily="IRANSansWeb(FaNum) Medium" />
+                    <TextBlock Grid.Column="6" Text="ش" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Center" FontFamily="IRANSansWeb(FaNum) Medium" />
+                </Grid>
+
+                <Grid Grid.Row="2" x:Name="CalendarDays" Margin="10,0,10,0" FlowDirection="RightToLeft">
+                    <!--<Grid.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="Padding" Value="10" />
+                        </Style>
+                    </Grid.Resources>-->
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button  Style="{StaticResource DayItemTheme}" HorizontalAlignment="Stretch">
+                        <Grid HorizontalAlignment="Stretch">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="5" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="12" x:Name="PersianDayId" FontFamily="IRANSansWeb(FaNum)" />
+                            <Grid Row="1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="13" x:Name="HijriDayId" HorizontalAlignment="Stretch" VerticalAlignment="Center" TextAlignment="Right" />
+                                    <TextBlock Grid.Column="1" x:Name="GregorianDayId" Text="13" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </Button>
+                </Grid>
+            </Grid>
+        </Grid>
+        <Border CornerRadius="6" Background="Black" Opacity="0" MouseDown="Backdrop_OnMouseDown" Visibility="Hidden" x:Name="Backdrop" />
+        <Border CornerRadius="8,8,0,0"  Margin="20,450,20,0" Opacity="0.3" x:Name="PageViewContainer" Background="White">
+            <StackPanel VerticalAlignment="Stretch">
+                <TextBlock x:Name="EventDay"  Text="پنجشنبه" Foreground="DimGray" Margin="10,10,10,0" FontSize="16"  VerticalAlignment="Stretch" FlowDirection="RightToLeft" FontFamily="IRANSansWeb(FaNum) Medium" />
+                <TextBlock x:Name="EventText" Margin="10,10,10,0" Foreground="DarkGray" VerticalAlignment="Stretch" FlowDirection="RightToLeft" FontFamily="IRANSansWeb(FaNum) Light" />
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>
