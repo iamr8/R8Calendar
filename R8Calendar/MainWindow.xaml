@@ -9,8 +9,8 @@
 Background="Transparent"
         MouseDown="MainWindow_OnMouseDown"
         Title="MainWindow" Height="530" Width="410" ResizeMode="NoResize" AllowsTransparency="True">
-    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-        <Border CornerRadius="6"  Background="White" x:Name="ThemeNoise" Opacity="0.7" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" x:Name="GridWrapper">
+        <Border CornerRadius="6" ClipToBounds="True"  Background="White" x:Name="ThemeNoise" Opacity="0.7" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0,-3,-0.4,2.6">
             <Border.Effect>
                 <local:NoiseEffect Ratio="0.2" x:Name="ThemeNoiseRatio" />
             </Border.Effect>
@@ -132,13 +132,16 @@ Background="Transparent"
             </Grid>
         </Grid>
         <Border CornerRadius="6" Background="Black" Opacity="0" MouseDown="Backdrop_OnMouseDown" Visibility="Hidden" x:Name="Backdrop" />
-        <Border CornerRadius="8,8,0,0"  Margin="20,450,20,0" Opacity="0.3" x:Name="PageViewContainer" Background="White">
-            <Frame   x:Name="PageViewer"
+        <!--<Border CornerRadius="8,8,0,0"  Margin="0,450,0,0" Opacity="0.3" x:Name="PageViewContainer" Background="White">
+                <Frame x:Name="PageViewer"
                      Margin="0,0,0,0"
                      HorizontalAlignment="Stretch"
                      VerticalAlignment="Stretch"
                      Content="{Binding}"
                      NavigationUIVisibility="Hidden"></Frame>
-        </Border>
+        </Border>-->
+        
+
     </Grid>
+
 </Window>

@@ -5,7 +5,7 @@ namespace R8Calendar.Converter
 {
     public static class DayOfWeekConverter
     {
-        public enum PersianDayOfWeeks
+        public enum PersianDayOfWeek
         {
             [Display(Name = "شنبه")]
             Shanbeh = 0,
@@ -29,31 +29,31 @@ namespace R8Calendar.Converter
             Jomeh = 6
         }
 
-        public static PersianDayOfWeeks Persian(DayOfWeek day)
+        public static PersianDayOfWeek Persian(DayOfWeek day)
         {
             switch (day)
             {
                 case DayOfWeek.Friday:
-                    return PersianDayOfWeeks.Jomeh;
+                    return PersianDayOfWeek.Jomeh;
 
                 case DayOfWeek.Monday:
-                    return PersianDayOfWeeks.DoShanbeh;
+                    return PersianDayOfWeek.DoShanbeh;
 
                 case DayOfWeek.Sunday:
-                    return PersianDayOfWeeks.YekShanbeh;
+                    return PersianDayOfWeek.YekShanbeh;
 
                 case DayOfWeek.Thursday:
-                    return PersianDayOfWeeks.PanjShanbeh;
+                    return PersianDayOfWeek.PanjShanbeh;
 
                 case DayOfWeek.Tuesday:
-                    return PersianDayOfWeeks.SeShanbeh;
+                    return PersianDayOfWeek.SeShanbeh;
 
                 case DayOfWeek.Wednesday:
-                    return PersianDayOfWeeks.ChaharShanbeh;
+                    return PersianDayOfWeek.ChaharShanbeh;
 
                 case DayOfWeek.Saturday:
                 default:
-                    return PersianDayOfWeeks.Shanbeh;
+                    return PersianDayOfWeek.Shanbeh;
             }
         }
 

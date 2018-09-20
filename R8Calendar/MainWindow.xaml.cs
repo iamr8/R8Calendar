@@ -1,7 +1,9 @@
-﻿using R8Calendar.Converter;
+﻿using Persia;
+using R8Calendar.Converter;
 using R8Calendar.Models;
 using R8Calendar.Utils;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -11,7 +13,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
-using MonthModel = R8Calendar.Models.MonthModel;
+using Calendar = Persia.Calendar;
 
 namespace R8Calendar
 {
@@ -24,8 +26,8 @@ namespace R8Calendar
         private double EventOffOpacity => 0;
         private double EventOnOpacity => 1;
         private const double EventBackdropOpacity = 0.6;
-        private TimeSpan EventAnimationDuration => TimeSpan.FromMilliseconds(500);
-        private List<MonthModel> Months { get; set; }
+        private TimeSpan EventAnimationDuration => TimeSpan.FromMilliseconds(150);
+        private ConcurrentDictionary<int, List<DayModel>> Months { get; set; }
 
         // Theme
         private bool IsDark { get; set; }
@@ -49,7 +51,8 @@ namespace R8Calendar
 
         #endregion Theme Details
 
-        private Thickness EventClosedPosition { get; set; }
+        private List<Border> OpenedFrames = new List<Border>();
+        private Thickness EventClosedPosition => new Thickness(0, ActualHeight, 0, 0);
 
         public MainWindow()
         {
@@ -66,82 +69,70 @@ namespace R8Calendar
             this.EnableBlur();
             NowDateTime = DateTime.Now;
 
-            Months = GetJson.OpenFile(NowDateTime);
-            ReloadCalendar();
-            EventClosedPosition = new Thickness(20, ActualHeight - 20, 20, 0);
-            PageViewContainer.Margin = EventClosedPosition;
-            PageViewContainer.Opacity = EventOffOpacity;
-            IsDark = false;
+            //GetJson.UpdateEvents();
+            DesignCalendar();
+
+            IsDark = true;
             SetTheme();
 
             // http://tourismtime.ir/api/eventall
         }
 
-        private void ReloadCalendar()
-        {
-            DesignCalendar(NowDateTime);
-        }
-
-        private void DesignCalendar(DateTime dt)
+        private void DesignCalendar(DateTime? targetDateTime = null)
         {
             CalendarDays.Children.Clear();
 
-            var persianCalendar = new PersianCalendar();
+            if (targetDateTime == null) targetDateTime = NowDateTime;
+            var persianCalendar = Calendar.ConvertToPersian((DateTime)targetDateTime);
 
-            var persianYear = persianCalendar.GetYear(dt);
-            var persianMonth = persianCalendar.GetMonth(dt);
-            var rowIndex =
-                (int)DayOfWeekConverter.Persian(
-                    persianCalendar.GetDayOfWeek(persianCalendar.ToDateTime(persianYear, persianMonth, 1, 0, 0, 0, 0)));
-            var monthDaysCount = persianCalendar.GetDaysInMonth(persianYear, persianMonth, 1);
+            var persianYear = persianCalendar.ArrayType[0];
+            var persianMonth = persianCalendar.ArrayType[1];
 
-            for (var day = 0; day < monthDaysCount; day++)
+            var monthDays = Database.GetMonthDays(persianMonth);
+            Months = Database.DeserializeJson(persianYear, persianMonth);
+
+            for (var day = 0; day < monthDays; day++)
             {
                 var persianDay = day + 1;
+                var dayModel = Months.FirstOrDefault(x => x.Key == persianMonth).Value.Find(x => x.DayOfMonth == persianDay);
 
-                var greg = PersianConverter.PersianToGregorian(persianYear, persianMonth, persianDay);
-                var gregorianDay = greg.DayOfMonth;
-                var hijriDay = HijriConverter.GregorianToHijri(greg.Year, greg.Month, greg.DayOfMonth).DayOfMonth;
+                var currentDate =
+                    Calendar.ConvertToPersian(((DateTime)targetDateTime).Year, ((DateTime)targetDateTime).Month, day, DateType.Persian);
+                var persianDayOfWeek = (DayOfWeekConverter.PersianDayOfWeek)currentDate.DayOfWeek;
 
-                DesignDayButton(persianCalendar, CalendarDays, persianYear, persianMonth, persianDay, rowIndex,
-                    gregorianDay, hijriDay);
+                DesignDayButton(CalendarDays, persianYear, persianMonth, persianDay, persianDayOfWeek, dayModel);
             }
 
-            var persianTodayYear = persianCalendar.GetYear(DateTime.Now);
-            var persianTodayMonth = persianCalendar.GetMonth(DateTime.Now);
-            var persianTodayDay = persianCalendar.GetDayOfMonth(DateTime.Now);
-            var persianTodayDayOfWeek = persianCalendar.GetDayOfWeek(DateTime.Now);
+            SetTodayDate();
 
-            TodayDate.Content =
-                $"امروز: {DayOfWeekConverter.Persian(persianTodayDayOfWeek).GetDisplay()} {persianTodayDay} {MonthsName.Persian(persianTodayMonth)} {persianTodayYear}";
+            var firstDayOfGregorianMonth = Calendar.ConvertToGregorian(persianYear, persianMonth, 1, DateType.Persian);
+            var lastDayOfGregorianMonth = Calendar.ConvertToGregorian(persianYear, monthDays, 1, DateType.Persian);
 
             PersianTitle.Text = $"{MonthsName.Persian(persianMonth)} {persianYear}";
-
-            var firstDayOfMonth = persianCalendar.ToDateTime(persianYear, persianMonth, 1, 0, 0, 0, 0);
-            var lastDayOfMonth = persianCalendar.ToDateTime(persianYear, persianMonth, monthDaysCount, 0, 0, 0, 0);
-
-            GregorianTitle.Text = MonthsName.Gregorian(dt, firstDayOfMonth, lastDayOfMonth);
-            HijriTitle.Text = MonthsName.Hijri(firstDayOfMonth, lastDayOfMonth);
+            GregorianTitle.Text = MonthsName.Gregorian((DateTime)targetDateTime, firstDayOfGregorianMonth, lastDayOfGregorianMonth);
+            HijriTitle.Text = MonthsName.Hijri(firstDayOfGregorianMonth, lastDayOfGregorianMonth);
         }
 
-        private void DesignDayButton(PersianCalendar persianInstance, Panel parentGrid, int persianYear, int persianMonth, int persianDay, int adjustDay, int gregorianDay, int hijriDay)
+        private void SetTodayDate()
         {
-            var persianCalendar = persianInstance;
-            var now = DateTime.Now;
-            var gregorianOfThisDay = persianCalendar.ToDateTime(persianYear, persianMonth, persianDay, 0, 0, 0, 0);
-            var thisDayOfWeek = DayOfWeekConverter.Persian(persianCalendar.GetDayOfWeek(gregorianOfThisDay));
-            var dayIndex = (int)thisDayOfWeek;
-            var eventOfDay = Months.FirstOrDefault(x => x.MonthNo == persianMonth)?.Days
-                .FirstOrDefault(x => x.DayOfMonth == persianDay);
+            var persianCalendar = Calendar.ConvertToPersian(DateTime.Now);
+            var persianTodayYear = persianCalendar.ArrayType[0];
+            var persianTodayMonth = persianCalendar.ArrayType[1];
+            var persianTodayDay = persianCalendar.ArrayType[2];
+            var persianTodayDayOfWeek = persianCalendar.DayOfWeek;
+
+            TodayDate.Content =
+                $"امروز: {((DayOfWeekConverter.PersianDayOfWeek)persianTodayDayOfWeek).GetDisplay()} {persianTodayDay} {MonthsName.Persian(persianTodayMonth)} {persianTodayYear}";
+        }
+
+        private void DesignDayButton(Panel parentGrid, int persianYear, int persianMonth, int persianDay, DayOfWeekConverter.PersianDayOfWeek dayOfWeek, DayModel dayModel)
+        {
+            var gregorianOfThisDay = Calendar.ConvertToGregorian(persianYear, persianMonth, persianDay, DateType.Persian);
 
             // Condition check
-            var hasEvent = eventOfDay != null;
-            var holidayEvent = hasEvent && eventOfDay.IsHoliday;
-            var isToday = gregorianOfThisDay.Year.Equals(now.Year) && gregorianOfThisDay.Month.Equals(now.Month) &&
-                          gregorianOfThisDay.Day.Equals(now.Day);
-            var isFriday = dayIndex + 1 == 7;
-            var isHoliday = holidayEvent || isFriday;
-            //var isHoliday = (hasEvent && eventOfDay.IsHoliday) || (dayIndex + 1 == 7);
+            var hasEvent = dayModel.Events?.Count > 0;
+            var isToday = gregorianOfThisDay.Date == DateTime.Now.Date;
+            var isHoliday = (hasEvent && dayModel.IsHoliday) || ((int)dayOfWeek + 1 == 7);
 
             var persianDayForecolor = CurrentThemePersianDayForecolor;
             var gregorianDayForecolor = CurrentThemeGregHijrForecolor;
@@ -181,35 +172,27 @@ namespace R8Calendar
             }
 
             // Stylize day box
-            var persianDayInt = new TextBlock
+            var persianDayNumber = new DayTextBlock
             {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Center,
-                TextAlignment = TextAlignment.Center,
                 Text = persianDay.ToString(),
                 Foreground = persianDayForecolor,
                 FontSize = 14,
                 FontFamily = new FontFamily("IRANSansWeb(FaNum)")
             };
 
-            var englishDayInt = new TextBlock
+            var gregorianDayNumber = new DayTextBlock
             {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(4, 0, 0, 0),
-                TextAlignment = TextAlignment.Center,
-                Text = gregorianDay.ToString(),
+                Text = gregorianOfThisDay.Day.ToString(),
                 FontSize = 10,
                 Foreground = gregorianDayForecolor,
                 FontFamily = new FontFamily("IRANSansWeb"),
             };
-            var hijriDayInt = new TextBlock
+            var hijriDayNumber = new DayTextBlock
             {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 4, 0),
-                TextAlignment = TextAlignment.Center,
-                Text = ArabicDigits.Convert(hijriDay.ToString()),
+                Text = ArabicDigits.Convert(Calendar
+                    .ConvertToIslamic(persianYear, persianMonth, persianDay, DateType.Persian).ArrayType[2].ToString()),
                 FontFamily = new FontFamily("IRANSansWeb"),
                 Foreground = hijriDayForecolor,
                 FontSize = 10,
@@ -224,15 +207,15 @@ namespace R8Calendar
                 },
                 Children =
                 {
-                    englishDayInt,
-                    hijriDayInt
+                    gregorianDayNumber,
+                    hijriDayNumber
                 },
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
             };
 
-            Grid.SetColumn(englishDayInt, 0);
-            Grid.SetColumn(hijriDayInt, 1);
+            Grid.SetColumn(gregorianDayNumber, 0);
+            Grid.SetColumn(hijriDayNumber, 1);
 
             var dayGrid = new Grid
             {
@@ -243,7 +226,7 @@ namespace R8Calendar
                 },
                 Children =
                 {
-                    persianDayInt,
+                    persianDayNumber,
                     subBlock
                 },
                 VerticalAlignment = VerticalAlignment.Stretch,
@@ -251,7 +234,7 @@ namespace R8Calendar
                 Width = 40,
             };
 
-            Grid.SetRow(persianDayInt, 0);
+            Grid.SetRow(persianDayNumber, 0);
             Grid.SetRow(subBlock, 1);
 
             var block = new Button
@@ -265,11 +248,14 @@ namespace R8Calendar
                 BorderBrush = dayBorderColor,
             };
 
-            block.Click += delegate { ToggleEvent(persianYear, persianMonth, persianDay, thisDayOfWeek, eventOfDay); };
+            block.Click += delegate { ToggleEvent(persianYear, persianMonth, persianDay, dayOfWeek, dayModel); };
             parentGrid.Children.Add(block);
 
-            Grid.SetRow(block, ((persianDay - 1) + adjustDay) / 7);
-            Grid.SetColumn(block, dayIndex);
+            var dayOfWeekIndex = (int)dayOfWeek;
+            var weekIndex = ((persianDay - 1) + (6 - dayOfWeekIndex)) / 7;
+
+            Grid.SetRow(block, weekIndex);
+            Grid.SetColumn(block, dayOfWeekIndex);
         }
 
         //private void PointToDay(int persianYear, int persianMonth, int persianDay)
@@ -304,7 +290,7 @@ namespace R8Calendar
             {
                 timer.Stop();
                 NowDateTime = dt;
-                ReloadCalendar();
+                DesignCalendar();
 
                 CalendarDays.BeginAnimation(OpacityProperty, new DoubleAnimation(CalendarDays.Opacity, 1, animDur) { EasingFunction = easing });
                 PersianTitle.BeginAnimation(OpacityProperty, new DoubleAnimation(PersianTitle.Opacity, 1, animDur) { EasingFunction = easing });
@@ -346,81 +332,47 @@ namespace R8Calendar
                 DragMove();
         }
 
-        private void ToggleEvent(int persianYear, int persianMonth, int persianDay, DayOfWeekConverter.PersianDayOfWeeks thisDayOfWeek, DayModel @event)
+        private void ToggleEvent(int persianYear, int persianMonth, int persianDay, DayOfWeekConverter.PersianDayOfWeek thisDayOfWeek, DayModel @event)
         {
-            if (@event != null)
+            if (@event?.Events?.Count >= 1)
             {
                 CurrentEventDay = $"{thisDayOfWeek.GetDisplay()} {persianDay} {MonthsName.Persian(persianMonth)} {persianYear}";
+
                 CurrentEventText = string.Join(Environment.NewLine, @event.Events.ToArray());
-                OpenEvent();
+                PanelUtils.OpenPanel<Event>(ref GridWrapper, ref OpenedFrames, ref Backdrop, ActualHeight, eventPage =>
+                  {
+                      eventPage.EventDay.Text = CurrentEventDay;
+                      eventPage.EventText.Text = CurrentEventText;
+                      eventPage.EventText.MouseDown += (sender, eventArgs) =>
+                      {
+                      };
+                      const int eventTitleHeight = 20;
+                      var eventsApproxHeight =
+                          (eventPage.EventText.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None).Length * 22)
+                          + eventPage.EventText.Margin.Top;
+                      return eventTitleHeight + eventsApproxHeight + 30;
+                  });
             }
             else
             {
-                ClosePanel();
+                PanelUtils.ClosePanel(ref GridWrapper, ref OpenedFrames, ref Backdrop, ActualHeight);
             }
-        }
-
-        private void OpenPanel<T>(T page, Func<T, double, Thickness> doAfter) where T : Page
-        {
-            if (!(typeof(T) != typeof(Page))) return;
-            var finalHeight = doAfter.Invoke(page, ActualHeight);
-            PageViewer.Content = null;
-            PageViewer.Navigate(page);
-            Backdrop.Visibility = Visibility.Visible;
-            AnimatePanel(finalHeight, EventOnOpacity, EventBackdropOpacity);
-        }
-
-        private void OpenEvent()
-        {
-            OpenPanel(new Event(), (page, parentHeight) =>
-            {
-                page.EventDay.Text = CurrentEventDay;
-                page.EventText.Text = CurrentEventText;
-                var eventTitleHeight = page.EventDay.DesiredSize.Height + page.EventDay.Margin.Top +
-                                       page.EventDay.Margin.Bottom;
-                var eventsApproxHeight =
-                    (page.EventText.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None).Length * 22) +
-                    page.EventText.Margin.Top + page.EventText.Margin.Bottom;
-                return new Thickness(20, parentHeight - eventTitleHeight - eventsApproxHeight - 40, 20, 0);
-            });
         }
 
         private void OpenSetting()
         {
-            OpenPanel(new Setting(),
-                (page, parentHeight) => new Thickness(20, parentHeight - page.ParentGrid.DesiredSize.Height, 20, 0));
-        }
-
-        private void AnimatePanel(Thickness finalMove, double eventOpacity, double backdropOpacity)
-        {
-            var easing = new CircleEase { EasingMode = EasingMode.EaseInOut };
-
-            PageViewContainer.BeginAnimation(MarginProperty, new ThicknessAnimation(PageViewContainer.Margin, finalMove, EventAnimationDuration) { EasingFunction = easing });
-            PageViewContainer.BeginAnimation(OpacityProperty, new DoubleAnimation(PageViewContainer.Opacity, eventOpacity, EventAnimationDuration) { EasingFunction = easing });
-            Backdrop.BeginAnimation(OpacityProperty, new DoubleAnimation(Backdrop.Opacity, backdropOpacity, EventAnimationDuration) { EasingFunction = easing });
-
-            //var eventTextOpaAnim = new DoubleAnimation(EventText.Opacity, eventOpacity, EventAnimationDuration) { EasingFunction = easing };
-            //EventText.BeginAnimation(OpacityProperty, eventTextOpaAnim);
-            //EventDay.BeginAnimation(OpacityProperty, eventTextOpaAnim);
-        }
-
-        private void ClosePanel()
-        {
-            CurrentEventDay = string.Empty;
-            CurrentEventText = string.Empty;
-            AnimatePanel(EventClosedPosition, EventOffOpacity, 0);
-            var timer = new DispatcherTimer { Interval = EventAnimationDuration };
-            timer.Start();
-            timer.Tick += delegate
-            {
-                timer.Stop();
-                Backdrop.Visibility = Visibility.Hidden;
-            };
+            //SetTheme();
+            //PanelUtils.OpenPanel<Setting>(_ => 100);
         }
 
         private void Backdrop_OnMouseDown(object sender, MouseButtonEventArgs e)
         {
-            ClosePanel();
+            PanelUtils.ClosePanel(ref GridWrapper, ref OpenedFrames, ref Backdrop, ActualHeight);
+
+            Console.WriteLine("Opened-frames count: {0}", OpenedFrames.Count);
+            Console.WriteLine("Backdrop opacity: {0}", Backdrop.Opacity);
+            Console.WriteLine("Mainwindow actual height: {0}", ActualHeight);
+            Console.WriteLine("-----------------------");
         }
 
         private void BtnExit_OnClick(object sender, RoutedEventArgs e)
@@ -459,20 +411,19 @@ namespace R8Calendar
                 IsDark = true;
             }
 
-            var dur = TimeSpan.FromMilliseconds(300);
+            var animationDuration = TimeSpan.FromMilliseconds(300);
 
-            ThemeNoise.CreateStoryBoard(CurrentThemeThemeNoiseColor, "(Border.Background).(SolidColorBrush.Color)", dur);
-            PersianTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", dur);
-            GregorianTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", dur);
-            HijriTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", dur);
-            TodayDate.CreateStoryBoard(CurrentThemeTodayForecolor, "(Button.Foreground).(SolidColorBrush.Color)", dur);
-            Separator.CreateStoryBoard(CurrentThemeSeparator, "Background.Color", dur);
-            BtnPrevMonth.CreateStoryBoard(CurrentThemeChangeMonthForecolor, "(Button.Foreground).(SolidColorBrush.Color)", dur);
-            BtnNextMonth.CreateStoryBoard(CurrentThemeChangeMonthForecolor, "(Button.Foreground).(SolidColorBrush.Color)", dur);
+            ThemeNoise.CreateStoryBoard(CurrentThemeThemeNoiseColor, "(Border.Background).(SolidColorBrush.Color)", animationDuration);
+            PersianTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", animationDuration);
+            GregorianTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", animationDuration);
+            HijriTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", animationDuration);
+            TodayDate.CreateStoryBoard(CurrentThemeTodayForecolor, "(Button.Foreground).(SolidColorBrush.Color)", animationDuration);
+            Separator.CreateStoryBoard(CurrentThemeSeparator, "Background.Color", animationDuration);
+            BtnPrevMonth.CreateStoryBoard(CurrentThemeChangeMonthForecolor, "(Button.Foreground).(SolidColorBrush.Color)", animationDuration);
+            BtnNextMonth.CreateStoryBoard(CurrentThemeChangeMonthForecolor, "(Button.Foreground).(SolidColorBrush.Color)", animationDuration);
             DesignCalendar(NowDateTime);
 
-            var calendarDays = CalendarDays.Children;
-            foreach (var day in calendarDays)
+            foreach (var day in CalendarDays.Children)
             {
                 var dayDetails = ((day as Button)?.Content as Grid)?.Children;
                 if (dayDetails == null) continue;
@@ -481,19 +432,19 @@ namespace R8Calendar
                     switch (dayDetail)
                     {
                         case TextBlock persianDay:
-                            persianDay.CreateStoryBoard(CurrentThemePersianDayForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", dur);
+                            persianDay.CreateStoryBoard(CurrentThemePersianDayForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", animationDuration);
                             break;
 
                         case Grid customDays:
                             foreach (var cusDay in customDays.Children)
                                 if (cusDay is TextBlock customDay)
                                     customDay.CreateStoryBoard(CurrentThemeGregHijrForecolor,
-                                        "(TextBlock.Foreground).(SolidColorBrush.Color)", dur);
+                                        "(TextBlock.Foreground).(SolidColorBrush.Color)", animationDuration);
                             break;
                     }
             }
 
-            ThemeNoise.BeginAnimation(OpacityProperty, new DoubleAnimation(ThemeNoise.Opacity, CurrentThemeThemeNoiseOpacity, dur));
+            ThemeNoise.BeginAnimation(OpacityProperty, new DoubleAnimation(ThemeNoise.Opacity, CurrentThemeThemeNoiseOpacity, animationDuration));
             ThemeNoiseRatio.Ratio = CurrentThemeThemeNoiseRatioInt;
             DesignCalendar(NowDateTime);
         }
