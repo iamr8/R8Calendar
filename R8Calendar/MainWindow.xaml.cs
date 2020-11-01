@@ -1,21 +1,23 @@
-﻿using Persia;
+﻿using R8.Lib;
 using R8.PanelStack;
+
 using R8Calendar.Blur;
 using R8Calendar.Converter;
 using R8Calendar.Models;
 using R8Calendar.Utils;
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
-using Calendar = Persia.Calendar;
 
 namespace R8Calendar
 {
@@ -67,6 +69,7 @@ namespace R8Calendar
                 ParentHeight = ActualHeight,
                 Log = Console.WriteLine
             };
+
             DesignCalendar();
             IsDark = true;
             SetTheme();
@@ -76,31 +79,33 @@ namespace R8Calendar
         {
             CalendarDays.Children.Clear();
 
-            if (targetDateTime == null) targetDateTime = NowDateTime;
-            var persianCalendar = Calendar.ConvertToPersian((DateTime)targetDateTime);
+            targetDateTime ??= NowDateTime;
+            var persianCalendar = new PersianDateTime(targetDateTime.Value);
 
-            var persianYear = persianCalendar.ArrayType[0];
-            var persianMonth = persianCalendar.ArrayType[1];
+            var persianYear = persianCalendar.Year;
+            var persianMonth = persianCalendar.Month;
 
             var monthDays = Database.GetMonthDays(persianMonth);
+
+            var sync = SynchronizationContext.Current;
             Months = Database.DeserializeJson(persianYear, persianMonth);
 
-            for (var day = 0; day < monthDays; day++)
+            for (var dayIndex = 0; dayIndex < monthDays; dayIndex++)
             {
-                var persianDay = day + 1;
-                var dayModel = Months.FirstOrDefault(x => x.Key == persianMonth).Value.Find(x => x.DayOfMonth == persianDay);
+                var day = dayIndex + 1;
+                var dayModel = Months.FirstOrDefault(x => x.Key == persianMonth).Value.Find(x => x.DayOfMonth == day);
 
-                var currentDate =
-                    Calendar.ConvertToPersian(((DateTime)targetDateTime).Year, ((DateTime)targetDateTime).Month, day, DateType.Persian);
+                var currentDate = new PersianDateTime(new DateTime(targetDateTime.Value.Year, targetDateTime.Value.Month, day));
                 var persianDayOfWeek = (DayOfWeekConverter.PersianDayOfWeek)currentDate.DayOfWeek;
 
-                DesignDayButton(CalendarDays, persianYear, persianMonth, persianDay, persianDayOfWeek, dayModel);
+                DesignDayButton(CalendarDays, persianYear, persianMonth, day, persianDayOfWeek, dayModel);
             }
 
             SetTodayDate();
 
-            var firstDayOfGregorianMonth = Calendar.ConvertToGregorian(persianYear, persianMonth, 1, DateType.Persian);
-            var lastDayOfGregorianMonth = Calendar.ConvertToGregorian(persianYear, monthDays, 1, DateType.Persian);
+            var firstDayOfGregorianMonth = new PersianDateTime(persianYear, persianMonth, 1).ToDateTime();
+            var lastDayOfGregorianMonth = new PersianDateTime(persianYear, persianMonth, monthDays).ToDateTime();
+            // var lastDayOfGregorianMonth = Calendar.ConvertToGregorian(persianYear, monthDays, 1, DateType.Persian);
 
             PersianTitle.Text = $"{MonthsName.Persian(persianMonth)} {persianYear}";
             GregorianTitle.Text = MonthsName.Gregorian((DateTime)targetDateTime, firstDayOfGregorianMonth, lastDayOfGregorianMonth);
@@ -109,19 +114,19 @@ namespace R8Calendar
 
         private void SetTodayDate()
         {
-            var persianCalendar = Calendar.ConvertToPersian(DateTime.Now);
-            var persianTodayYear = persianCalendar.ArrayType[0];
-            var persianTodayMonth = persianCalendar.ArrayType[1];
-            var persianTodayDay = persianCalendar.ArrayType[2];
+            var persianCalendar = new PersianDateTime(DateTime.Now);
+            var persianTodayYear = persianCalendar.Year;
+            var persianTodayMonth = persianCalendar.Month;
+            var persianTodayDay = persianCalendar.DayOfMonth;
             var persianTodayDayOfWeek = persianCalendar.DayOfWeek;
 
             TodayDate.Content =
-                $"امروز: {((DayOfWeekConverter.PersianDayOfWeek)persianTodayDayOfWeek).GetDisplay()} {persianTodayDay} {MonthsName.Persian(persianTodayMonth)} {persianTodayYear}";
+                $"امروز: {((DayOfWeekConverter.PersianDayOfWeek)persianTodayDayOfWeek).GetDisplayName()} {persianTodayDay} {MonthsName.Persian(persianTodayMonth)} {persianTodayYear}";
         }
 
         private void DesignDayButton(Panel parentGrid, int persianYear, int persianMonth, int persianDay, DayOfWeekConverter.PersianDayOfWeek dayOfWeek, DayModel dayModel)
         {
-            var gregorianOfThisDay = Calendar.ConvertToGregorian(persianYear, persianMonth, persianDay, DateType.Persian);
+            var gregorianOfThisDay = new PersianDateTime(persianYear, persianMonth, persianDay).ToDateTime();
 
             // Condition check
             var hasEvent = dayModel.Events?.Count > 0;
@@ -185,8 +190,7 @@ namespace R8Calendar
             var hijriDayNumber = new DayTextBlock
             {
                 Margin = new Thickness(0, 0, 4, 0),
-                Text = ArabicDigits.Convert(Calendar
-                    .ConvertToIslamic(persianYear, persianMonth, persianDay, DateType.Persian).ArrayType[2].ToString()),
+                Text = new HijriCalendar().GetDayOfMonth(gregorianOfThisDay).ToString(),
                 FontFamily = new FontFamily("IRANSansWeb"),
                 Foreground = hijriDayForecolor,
                 FontSize = 10,
@@ -195,15 +199,15 @@ namespace R8Calendar
             var subBlock = new Grid
             {
                 ColumnDefinitions =
-                {
-                    new ColumnDefinition {Width = new GridLength(1, GridUnitType.Star)},
-                    new ColumnDefinition {Width = new GridLength(1, GridUnitType.Star)}
-                },
+                    {
+                        new ColumnDefinition {Width = new GridLength(1, GridUnitType.Star)},
+                        new ColumnDefinition {Width = new GridLength(1, GridUnitType.Star)}
+                    },
                 Children =
-                {
-                    gregorianDayNumber,
-                    hijriDayNumber
-                },
+                    {
+                        gregorianDayNumber,
+                        hijriDayNumber
+                    },
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
             };
@@ -214,15 +218,15 @@ namespace R8Calendar
             var dayGrid = new Grid
             {
                 RowDefinitions =
-                {
-                    new RowDefinition {Height = new GridLength(1, GridUnitType.Star)},
-                    new RowDefinition {Height = new GridLength(1, GridUnitType.Star)},
-                },
+                    {
+                        new RowDefinition {Height = new GridLength(1, GridUnitType.Star)},
+                        new RowDefinition {Height = new GridLength(1, GridUnitType.Star)},
+                    },
                 Children =
-                {
-                    persianDayNumber,
-                    subBlock
-                },
+                    {
+                        persianDayNumber,
+                        subBlock
+                    },
                 VerticalAlignment = VerticalAlignment.Stretch,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 Width = 40,
@@ -280,16 +284,20 @@ namespace R8Calendar
 
             var timer = new DispatcherTimer { Interval = animDur };
             timer.Start();
-            timer.Tick += delegate
+            timer.Tick += (sender, args) =>
             {
-                timer.Stop();
+                ((DispatcherTimer)sender)?.Stop();
                 NowDateTime = dt;
                 DesignCalendar();
 
-                CalendarDays.BeginAnimation(OpacityProperty, new DoubleAnimation(CalendarDays.Opacity, 1, animDur) { EasingFunction = easing });
-                PersianTitle.BeginAnimation(OpacityProperty, new DoubleAnimation(PersianTitle.Opacity, 1, animDur) { EasingFunction = easing });
-                GregorianTitle.BeginAnimation(OpacityProperty, new DoubleAnimation(GregorianTitle.Opacity, 1, animDur) { EasingFunction = easing });
-                HijriTitle.BeginAnimation(OpacityProperty, new DoubleAnimation(HijriTitle.Opacity, 1, animDur) { EasingFunction = easing });
+                CalendarDays.BeginAnimation(OpacityProperty,
+                    new DoubleAnimation(CalendarDays.Opacity, 1, animDur) { EasingFunction = easing });
+                PersianTitle.BeginAnimation(OpacityProperty,
+                    new DoubleAnimation(PersianTitle.Opacity, 1, animDur) { EasingFunction = easing });
+                GregorianTitle.BeginAnimation(OpacityProperty,
+                    new DoubleAnimation(GregorianTitle.Opacity, 1, animDur) { EasingFunction = easing });
+                HijriTitle.BeginAnimation(OpacityProperty,
+                    new DoubleAnimation(HijriTitle.Opacity, 1, animDur) { EasingFunction = easing });
             };
         }
 
@@ -334,7 +342,7 @@ namespace R8Calendar
                 _panelWrapper.Show<Event>(eventPage =>
                 {
                     eventPage.EventDay.Text =
-                        $"{thisDayOfWeek.GetDisplay()} {persianDay} {MonthsName.Persian(persianMonth)} {persianYear}";
+                        $"{thisDayOfWeek.GetDisplayName()} {persianDay} {MonthsName.Persian(persianMonth)} {persianYear}";
                     eventPage.EventText.Text = string.Join(Environment.NewLine, @event.Events.ToArray());
 
                     var eventsApproxHeight =
@@ -367,7 +375,7 @@ namespace R8Calendar
         {
             _panelWrapper.Show<Setting>(setting =>
             {
-                setting.BtnChangeTheme.Click += (sender, args) =>
+                setting.BtnChangeTheme.Click += async (sender, args) =>
                 {
                     SetTheme();
                 };
@@ -457,7 +465,7 @@ namespace R8Calendar
 
         private void BtnChangeTheme_OnClick(object sender, RoutedEventArgs e)
         {
-            //SetTheme();
+            //SetThemeAsync();
             OpenSetting();
         }
 

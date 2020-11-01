@@ -1,11 +1,16 @@
 ﻿using Newtonsoft.Json.Linq;
-using Persia;
+
+using R8.Lib;
+
 using R8Calendar.Models;
+
 using RestSharp;
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -31,14 +36,15 @@ namespace R8Calendar.Converter
         {
             var client = new RestClient(JsonEndpoint);
             var request = new RestRequest(Method.GET);
-            var response = await Task.Run(() => client.ExecuteTaskAsync(request)).ConfigureAwait(false);
+
+            var response = await client.ExecuteAsync(request).ConfigureAwait(false);
 
             if (response.StatusCode != HttpStatusCode.OK)
                 throw new Exception("Error in download json strings");
 
             var path = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName) + $"\\{JsonFilename}";
             var jsonText = response.Content;
-            File.WriteAllText(path, jsonText);
+            await File.WriteAllTextAsync(path, jsonText).ConfigureAwait(false);
         }
 
         public static ConcurrentDictionary<int, List<DayModel>> DeserializeJson(int persianYear, int persianMonth)
@@ -46,8 +52,9 @@ namespace R8Calendar.Converter
             string json;
             try
             {
-                using (var reader = new StreamReader(JsonFilename))
-                    json = reader.ReadToEnd();
+                var path = Path.Combine(Directory.GetCurrentDirectory(), JsonFilename);
+                using var reader = new StreamReader(path);
+                json = reader.ReadToEnd();
             }
             catch (Exception ex)
             {
@@ -55,7 +62,8 @@ namespace R8Calendar.Converter
                 json = "";
             }
 
-            if (string.IsNullOrEmpty(json)) return new ConcurrentDictionary<int, List<DayModel>>();
+            if (string.IsNullOrEmpty(json))
+                return new ConcurrentDictionary<int, List<DayModel>>();
             var calendars = JToken.Parse(json);
 
             var monthResult = Init();
@@ -80,31 +88,32 @@ namespace R8Calendar.Converter
                                             IsHoliday = holiday == "1"
                                         }).ToList(),
                             }).ToList();
-                if (date.Count <= 0) continue;
+                if (date.Count <= 0)
+                    continue;
 
                 DateTime rangeFrom;
                 DateTime rangeTo;
-                CalendarTypeEnum calendarType;
+                CalendarTypes calendarType;
 
                 switch (calendarName)
                 {
                     case "jalali":
-                        rangeFrom = Calendar.ConvertToGregorian(persianYear, persianMonth, 1, DateType.Persian);
-                        rangeTo = Calendar.ConvertToGregorian(persianYear, persianMonth, GetMonthDays(persianMonth), DateType.Persian);
-                        calendarType = CalendarTypeEnum.Persian;
+                        rangeFrom = new PersianDateTime(persianYear, persianMonth, 1).ToDateTime();
+                        rangeTo = new PersianDateTime(persianYear, persianMonth, GetMonthDays(persianMonth)).ToDateTime();
+                        calendarType = CalendarTypes.Persian;
                         break;
 
                     case "miladi":
-                        rangeFrom = Calendar.ConvertToGregorian(persianYear, persianMonth, 1, DateType.Persian);
-                        rangeTo = Calendar.ConvertToGregorian(persianYear, persianMonth, GetMonthDays(persianMonth), DateType.Persian);
-                        calendarType = CalendarTypeEnum.Gregorian;
+                        rangeFrom = new PersianDateTime(persianYear, persianMonth, 1).ToDateTime();
+                        rangeTo = new PersianDateTime(persianYear, persianMonth, GetMonthDays(persianMonth)).ToDateTime();
+                        calendarType = CalendarTypes.Gregorian;
                         break;
 
                     case "hijri":
                     default:
-                        rangeFrom = Calendar.ConvertToGregorian(Calendar.ConvertToIslamic(persianYear, persianMonth, 1, DateType.Persian));
-                        rangeTo = Calendar.ConvertToGregorian(Calendar.ConvertToIslamic(persianYear, persianMonth, GetMonthDays(persianMonth), DateType.Persian));
-                        calendarType = CalendarTypeEnum.Hijri;
+                        rangeFrom = new PersianDateTime(persianYear, persianMonth, 1).ToDateTime();
+                        rangeTo = new PersianDateTime(persianYear, persianMonth, GetMonthDays(persianMonth)).ToDateTime();
+                        calendarType = CalendarTypes.Hijri;
                         break;
                 }
 
@@ -117,15 +126,8 @@ namespace R8Calendar.Converter
             return monthResult;
         }
 
-        public enum CalendarTypeEnum
-        {
-            Gregorian,
-            Persian,
-            Hijri
-        }
-
         private static void UpdateLibrary(this ConcurrentDictionary<int, List<DayModel>> monthResult,
-            List<MonthModel> date, IEnumerable<DateTime> range, CalendarTypeEnum calendarType)
+            List<MonthModel> date, IEnumerable<DateTime> range, CalendarTypes calendarType)
         {
             foreach (var neededDay in range)
             {
@@ -134,32 +136,33 @@ namespace R8Calendar.Converter
                 int currentPersianMonth;
                 int currentPersianDay;
 
-                var persianate = Calendar.ConvertToPersian(neededDay).ArrayType;
+                var persianate = new PersianDateTime(neededDay);
 
                 switch (calendarType)
                 {
-                    case CalendarTypeEnum.Persian:
-                        currentMonth = persianate[1];
-                        currentDay = persianate[2];
+                    case CalendarTypes.Persian:
+                        currentMonth = persianate.Month;
+                        currentDay = persianate.DayOfMonth;
                         break;
 
-                    case CalendarTypeEnum.Hijri:
-                        var currentHijriDate = Calendar.ConvertToIslamic(neededDay);
-                        currentMonth = currentHijriDate.ArrayType[1];
-                        currentDay = currentHijriDate.ArrayType[2];
+                    case CalendarTypes.Hijri:
+                        var hijri = new HijriCalendar();
+                        // var currentHijriDate = Calendar.ConvertToIslamic(neededDay);
+                        currentMonth = hijri.GetMonth(neededDay);
+                        currentDay = hijri.GetDayOfMonth(neededDay);
                         break;
 
-                    case CalendarTypeEnum.Gregorian:
+                    case CalendarTypes.Gregorian:
                     default:
                         currentMonth = neededDay.Month;
                         currentDay = neededDay.Day;
                         break;
                 }
 
-                if (calendarType != CalendarTypeEnum.Persian)
+                if (calendarType != CalendarTypes.Persian)
                 {
-                    currentPersianMonth = persianate[1];
-                    currentPersianDay = persianate[2];
+                    currentPersianMonth = persianate.Month;
+                    currentPersianDay = persianate.DayOfMonth;
                 }
                 else
                 {
