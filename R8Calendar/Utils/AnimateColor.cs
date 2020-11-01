@@ -7,13 +7,13 @@ namespace R8Calendar.Utils
 {
     public static class AnimateColor
     {
-        public static void CreateStoryBoard(this FrameworkElement obj, SolidColorBrush toColor, string propertyPath, TimeSpan dur)
+        public static void CreateStoryBoard(this FrameworkElement obj, SolidColorBrush toColor, string propertyPath)
         {
             var easing = new CircleEase { EasingMode = EasingMode.EaseInOut };
             var dayLeadColorAnim = new ColorAnimation
             {
                 AutoReverse = false,
-                Duration = dur,
+                Duration = TimeSpan.FromMilliseconds(300),
                 EasingFunction = easing,
                 To = toColor.Color
             };

@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 
-namespace R8Calendar
+namespace R8Calendar.Blur
 {
     public class NoiseEffect : ShaderEffect
     {
@@ -18,8 +19,10 @@ namespace R8Calendar
 
         public NoiseEffect()
         {
-            var pixelShader = new PixelShader { UriSource = new Uri("/R8Calendar;component/Noise.ps", UriKind.Relative) };
-            this.PixelShader = pixelShader;
+            this.PixelShader = new PixelShader
+            {
+                UriSource = new Uri($"/{Assembly.GetExecutingAssembly()};component/Blur/Noise.ps", UriKind.Relative)
+            };
 
             this.UpdateShaderValue(InputProperty);
             this.UpdateShaderValue(RandomInputProperty);

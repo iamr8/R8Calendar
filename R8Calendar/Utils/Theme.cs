@@ -2,7 +2,7 @@
 
 namespace R8Calendar.Utils
 {
-    public static class StaticValues
+    public static class Theme
     {
         public static class WhiteTheme
         {

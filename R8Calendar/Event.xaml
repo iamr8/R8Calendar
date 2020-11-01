@@ -7,10 +7,10 @@
       mc:Ignorable="d"
       d:DesignHeight="450" d:DesignWidth="800"
       Title="Event">
-
-    <StackPanel VerticalAlignment="Stretch">
-
-        <TextBlock x:Name="EventDay"  Margin="10,10,10,0" Foreground="DimGray"  VerticalAlignment="Stretch" FlowDirection="RightToLeft" FontFamily="IRANSansWeb(FaNum) Medium" FontSize="16" />
-        <TextBlock x:Name="EventText" Margin="10,10,10,0" Foreground="DarkGray" VerticalAlignment="Stretch" FlowDirection="RightToLeft" FontFamily="IRANSansWeb(FaNum) Light" />
-    </StackPanel>
+    <Border CornerRadius="10,10,0,0" Background="White">
+        <StackPanel VerticalAlignment="Stretch">
+            <TextBlock x:Name="EventDay"  Margin="10,10,10,0" Foreground="DimGray"  VerticalAlignment="Stretch" FlowDirection="RightToLeft" FontFamily="IRANSansWeb(FaNum) Medium" FontSize="16" />
+            <TextBlock x:Name="EventText" Margin="10,10,10,0" Foreground="DarkGray" VerticalAlignment="Stretch" FlowDirection="RightToLeft" FontFamily="IRANSansWeb(FaNum) Light" />
+        </StackPanel>
+    </Border>
 </Page>

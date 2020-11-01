@@ -23,7 +23,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <LangVersion>7.1</LangVersion>
+    <LangVersion>default</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -39,14 +39,17 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="Persia, Version=3.0.4727.38582, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Persia.NET.3.0.4727\lib\Persia.dll</HintPath>
     </Reference>
-    <Reference Include="RestSharp, Version=106.3.1.0, Culture=neutral, PublicKeyToken=598062e77f915f75, processorArchitecture=MSIL">
-      <HintPath>..\packages\RestSharp.106.3.1\lib\net452\RestSharp.dll</HintPath>
+    <Reference Include="R8.PanelStack">
+      <HintPath>..\..\..\PanelWrapper\PanelWrapper\PanelWrapper\bin\Debug\R8.PanelStack.dll</HintPath>
+    </Reference>
+    <Reference Include="RestSharp, Version=106.11.7.0, Culture=neutral, PublicKeyToken=598062e77f915f75, processorArchitecture=MSIL">
+      <HintPath>..\packages\RestSharp.106.11.7\lib\net452\RestSharp.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
@@ -71,6 +74,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Blur\EnableBlur.cs" />
     <Compile Include="Event.xaml.cs">
       <DependentUpon>Event.xaml</DependentUpon>
     </Compile>
@@ -79,11 +83,7 @@
     </Compile>
     <Compile Include="Utils\AnimateColor.cs" />
     <Compile Include="Utils\DayTextBlock.cs" />
-    <Compile Include="Utils\EnableBlur.cs" />
-    <Compile Include="Utils\GetControl.cs" />
-    <Compile Include="Utils\GetLines.cs" />
-    <Compile Include="Utils\PanelUtils.cs" />
-    <Compile Include="Utils\StaticValues.cs" />
+    <Compile Include="Utils\Theme.cs" />
     <Page Include="Event.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -101,7 +101,6 @@
     <Compile Include="Converter\Enums.cs" />
     <Compile Include="Converter\Database.cs" />
     <Compile Include="Converter\MonthsName.cs" />
-    <Compile Include="Converter\Resolver.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
@@ -130,7 +129,7 @@
   <ItemGroup>
     <Compile Include="Models\DayModel.cs" />
     <Compile Include="Models\MonthModel.cs" />
-    <Compile Include="NoiseEffect.cs" />
+    <Compile Include="Blur\NoiseEffect.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -148,7 +147,7 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <Resource Include="Noise.ps" />
+    <Resource Include="Blur\Noise.ps" />
     <None Include="eventall.json" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
@@ -160,7 +159,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Noise.fx" />
+    <Content Include="Blur\Noise.fx" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

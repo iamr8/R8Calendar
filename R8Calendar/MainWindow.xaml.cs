@@ -1,4 +1,6 @@
 ﻿using Persia;
+using R8.PanelStack;
+using R8Calendar.Blur;
 using R8Calendar.Converter;
 using R8Calendar.Models;
 using R8Calendar.Utils;
@@ -23,17 +25,10 @@ namespace R8Calendar
     public partial class MainWindow : Window
     {
         private DateTime NowDateTime { get; set; }
-        private double EventOffOpacity => 0;
-        private double EventOnOpacity => 1;
-        private const double EventBackdropOpacity = 0.6;
-        private TimeSpan EventAnimationDuration => TimeSpan.FromMilliseconds(150);
         private ConcurrentDictionary<int, List<DayModel>> Months { get; set; }
 
         // Theme
         private bool IsDark { get; set; }
-
-        private string CurrentEventDay { get; set; }
-        private string CurrentEventText { get; set; }
 
         #region Theme Details
 
@@ -49,18 +44,13 @@ namespace R8Calendar
         private SolidColorBrush CurrentThemeSeparator { get; set; }
         private SolidColorBrush CurrentThemeChangeMonthForecolor { get; set; }
 
-        #endregion Theme Details
+        private PanelAdapter _panelWrapper;
 
-        private List<Border> OpenedFrames = new List<Border>();
-        private Thickness EventClosedPosition => new Thickness(0, ActualHeight, 0, 0);
+        #endregion Theme Details
 
         public MainWindow()
         {
             InitializeComponent();
-            //var wi = SystemParameters.WorkArea.Width;
-            //var he = SystemParameters.WorkArea.Height;
-            //Left = wi - ActualWidth - 50;
-            //Top = he - ActualHeight - 50;
             Loaded += MainWindow_Loaded;
         }
 
@@ -69,13 +59,17 @@ namespace R8Calendar
             this.EnableBlur();
             NowDateTime = DateTime.Now;
 
-            //GetJson.UpdateEvents();
+            _panelWrapper = new PanelAdapter
+            {
+                Container = PanelContainer,
+                Backdrop = Backdrop,
+                UseBackdrop = true,
+                ParentHeight = ActualHeight,
+                Log = Console.WriteLine
+            };
             DesignCalendar();
-
             IsDark = true;
             SetTheme();
-
-            // http://tourismtime.ir/api/eventall
         }
 
         private void DesignCalendar(DateTime? targetDateTime = null)
@@ -332,47 +326,58 @@ namespace R8Calendar
                 DragMove();
         }
 
-        private void ToggleEvent(int persianYear, int persianMonth, int persianDay, DayOfWeekConverter.PersianDayOfWeek thisDayOfWeek, DayModel @event)
+        private void ToggleEvent(int persianYear, int persianMonth, int persianDay,
+            DayOfWeekConverter.PersianDayOfWeek thisDayOfWeek, DayModel @event)
         {
             if (@event?.Events?.Count >= 1)
             {
-                CurrentEventDay = $"{thisDayOfWeek.GetDisplay()} {persianDay} {MonthsName.Persian(persianMonth)} {persianYear}";
+                _panelWrapper.Show<Event>(eventPage =>
+                {
+                    eventPage.EventDay.Text =
+                        $"{thisDayOfWeek.GetDisplay()} {persianDay} {MonthsName.Persian(persianMonth)} {persianYear}";
+                    eventPage.EventText.Text = string.Join(Environment.NewLine, @event.Events.ToArray());
 
-                CurrentEventText = string.Join(Environment.NewLine, @event.Events.ToArray());
-                PanelUtils.OpenPanel<Event>(ref GridWrapper, ref OpenedFrames, ref Backdrop, ActualHeight, eventPage =>
-                  {
-                      eventPage.EventDay.Text = CurrentEventDay;
-                      eventPage.EventText.Text = CurrentEventText;
-                      eventPage.EventText.MouseDown += (sender, eventArgs) =>
-                      {
-                      };
-                      const int eventTitleHeight = 20;
-                      var eventsApproxHeight =
-                          (eventPage.EventText.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None).Length * 22)
-                          + eventPage.EventText.Margin.Top;
-                      return eventTitleHeight + eventsApproxHeight + 30;
-                  });
+                    var eventsApproxHeight =
+                        (eventPage.EventText.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None).Length *
+                         22)
+                        + eventPage.EventText.Margin.Top;
+                    var topMargin = eventsApproxHeight + 50;
+
+                    eventPage.MouseDown += (sender, args) =>
+                    {
+                        _panelWrapper.Show<Event>(eventPage2 =>
+                        {
+                            eventPage2.MouseDown += (sender2, args2) =>
+                            {
+                                _panelWrapper.Show<Event>(_ => topMargin);
+                            };
+                            return topMargin;
+                        });
+                    };
+                    return topMargin;
+                }, TimeSpan.FromSeconds(2));
             }
             else
             {
-                PanelUtils.ClosePanel(ref GridWrapper, ref OpenedFrames, ref Backdrop, ActualHeight);
+                _panelWrapper.CloseLastPanel();
             }
         }
 
         private void OpenSetting()
         {
-            //SetTheme();
-            //PanelUtils.OpenPanel<Setting>(_ => 100);
+            _panelWrapper.Show<Setting>(setting =>
+            {
+                setting.BtnChangeTheme.Click += (sender, args) =>
+                {
+                    SetTheme();
+                };
+                return 100;
+            });
         }
 
         private void Backdrop_OnMouseDown(object sender, MouseButtonEventArgs e)
         {
-            PanelUtils.ClosePanel(ref GridWrapper, ref OpenedFrames, ref Backdrop, ActualHeight);
-
-            Console.WriteLine("Opened-frames count: {0}", OpenedFrames.Count);
-            Console.WriteLine("Backdrop opacity: {0}", Backdrop.Opacity);
-            Console.WriteLine("Mainwindow actual height: {0}", ActualHeight);
-            Console.WriteLine("-----------------------");
+            _panelWrapper.CloseLastPanel();
         }
 
         private void BtnExit_OnClick(object sender, RoutedEventArgs e)
@@ -384,43 +389,44 @@ namespace R8Calendar
         {
             if (IsDark)
             {
-                CurrentThemeThemeNoiseColor = StaticValues.WhiteTheme.ThemeColor;
-                CurrentThemeThemeNoiseOpacity = StaticValues.WhiteTheme.ThemeBlurinessOpacity;
-                CurrentThemeThemeNoiseRatioInt = StaticValues.WhiteTheme.ThemeBlurinessRatio;
-                CurrentThemeHasEventDayBackColor = StaticValues.WhiteTheme.HasEventDayBackColor;
-                CurrentThemeDayLeadForecolor = StaticValues.WhiteTheme.DayLeadColor;
-                CurrentThemePersianDayForecolor = StaticValues.WhiteTheme.PersianDayColor;
-                CurrentThemeGregHijrForecolor = StaticValues.WhiteTheme.GregorianHijriColor;
-                CurrentThemeTodayForecolor = StaticValues.WhiteTheme.TodayForecolor;
-                CurrentThemeSeparator = StaticValues.WhiteTheme.Separator;
-                CurrentThemeChangeMonthForecolor = StaticValues.WhiteTheme.ChangeMonth;
+                CurrentThemeThemeNoiseColor = Theme.WhiteTheme.ThemeColor;
+                CurrentThemeThemeNoiseOpacity = Theme.WhiteTheme.ThemeBlurinessOpacity;
+                CurrentThemeThemeNoiseRatioInt = Theme.WhiteTheme.ThemeBlurinessRatio;
+                CurrentThemeHasEventDayBackColor = Theme.WhiteTheme.HasEventDayBackColor;
+                CurrentThemeDayLeadForecolor = Theme.WhiteTheme.DayLeadColor;
+                CurrentThemePersianDayForecolor = Theme.WhiteTheme.PersianDayColor;
+                CurrentThemeGregHijrForecolor = Theme.WhiteTheme.GregorianHijriColor;
+                CurrentThemeTodayForecolor = Theme.WhiteTheme.TodayForecolor;
+                CurrentThemeSeparator = Theme.WhiteTheme.Separator;
+                CurrentThemeChangeMonthForecolor = Theme.WhiteTheme.ChangeMonth;
                 IsDark = false;
             }
             else
             {
-                CurrentThemeThemeNoiseColor = StaticValues.DarkTheme.ThemeColor;
-                CurrentThemeThemeNoiseOpacity = StaticValues.DarkTheme.ThemeBlurinessOpacity;
-                CurrentThemeThemeNoiseRatioInt = StaticValues.DarkTheme.ThemeBlurinessRatio;
-                CurrentThemeHasEventDayBackColor = StaticValues.DarkTheme.HasEventDayBackColor;
-                CurrentThemeDayLeadForecolor = StaticValues.DarkTheme.DayLeadColor;
-                CurrentThemePersianDayForecolor = StaticValues.DarkTheme.PersianDayColor;
-                CurrentThemeGregHijrForecolor = StaticValues.DarkTheme.GregorianHijriColor;
-                CurrentThemeTodayForecolor = StaticValues.DarkTheme.TodayForecolor;
-                CurrentThemeSeparator = StaticValues.DarkTheme.Separator;
-                CurrentThemeChangeMonthForecolor = StaticValues.DarkTheme.ChangeMonth;
+                CurrentThemeThemeNoiseColor = Theme.DarkTheme.ThemeColor;
+                CurrentThemeThemeNoiseOpacity = Theme.DarkTheme.ThemeBlurinessOpacity;
+                CurrentThemeThemeNoiseRatioInt = Theme.DarkTheme.ThemeBlurinessRatio;
+                CurrentThemeHasEventDayBackColor = Theme.DarkTheme.HasEventDayBackColor;
+                CurrentThemeDayLeadForecolor = Theme.DarkTheme.DayLeadColor;
+                CurrentThemePersianDayForecolor = Theme.DarkTheme.PersianDayColor;
+                CurrentThemeGregHijrForecolor = Theme.DarkTheme.GregorianHijriColor;
+                CurrentThemeTodayForecolor = Theme.DarkTheme.TodayForecolor;
+                CurrentThemeSeparator = Theme.DarkTheme.Separator;
+                CurrentThemeChangeMonthForecolor = Theme.DarkTheme.ChangeMonth;
                 IsDark = true;
             }
 
             var animationDuration = TimeSpan.FromMilliseconds(300);
 
-            ThemeNoise.CreateStoryBoard(CurrentThemeThemeNoiseColor, "(Border.Background).(SolidColorBrush.Color)", animationDuration);
-            PersianTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", animationDuration);
-            GregorianTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", animationDuration);
-            HijriTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", animationDuration);
-            TodayDate.CreateStoryBoard(CurrentThemeTodayForecolor, "(Button.Foreground).(SolidColorBrush.Color)", animationDuration);
-            Separator.CreateStoryBoard(CurrentThemeSeparator, "Background.Color", animationDuration);
-            BtnPrevMonth.CreateStoryBoard(CurrentThemeChangeMonthForecolor, "(Button.Foreground).(SolidColorBrush.Color)", animationDuration);
-            BtnNextMonth.CreateStoryBoard(CurrentThemeChangeMonthForecolor, "(Button.Foreground).(SolidColorBrush.Color)", animationDuration);
+            ThemeNoise.CreateStoryBoard(CurrentThemeThemeNoiseColor, "(Border.Background).(SolidColorBrush.Color)");
+            PersianTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)");
+            GregorianTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)");
+            HijriTitle.CreateStoryBoard(CurrentThemeDayLeadForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)");
+            TodayDate.CreateStoryBoard(CurrentThemeTodayForecolor, "(Button.Foreground).(SolidColorBrush.Color)");
+            Separator.CreateStoryBoard(CurrentThemeSeparator, "Background.Color");
+            BtnPrevMonth.CreateStoryBoard(CurrentThemeChangeMonthForecolor, "(Button.Foreground).(SolidColorBrush.Color)");
+            BtnNextMonth.CreateStoryBoard(CurrentThemeChangeMonthForecolor, "(Button.Foreground).(SolidColorBrush.Color)");
+
             DesignCalendar(NowDateTime);
 
             foreach (var day in CalendarDays.Children)
@@ -432,14 +438,14 @@ namespace R8Calendar
                     switch (dayDetail)
                     {
                         case TextBlock persianDay:
-                            persianDay.CreateStoryBoard(CurrentThemePersianDayForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)", animationDuration);
+                            persianDay.CreateStoryBoard(CurrentThemePersianDayForecolor, "(TextBlock.Foreground).(SolidColorBrush.Color)");
                             break;
 
                         case Grid customDays:
                             foreach (var cusDay in customDays.Children)
                                 if (cusDay is TextBlock customDay)
                                     customDay.CreateStoryBoard(CurrentThemeGregHijrForecolor,
-                                        "(TextBlock.Foreground).(SolidColorBrush.Color)", animationDuration);
+                                        "(TextBlock.Foreground).(SolidColorBrush.Color)");
                             break;
                     }
             }

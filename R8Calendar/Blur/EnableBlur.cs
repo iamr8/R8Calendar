@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace R8Calendar.Utils
+namespace R8Calendar.Blur
 {
     public static class Blurriness
     {
@@ -35,10 +35,7 @@ namespace R8Calendar.Utils
 
         internal enum WindowCompositionAttribute
         {
-            // ...
             WCA_ACCENT_POLICY = 19
-
-            // ...
         }
 
         [DllImport("user32.dll")]
