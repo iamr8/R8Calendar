@@ -136,13 +136,13 @@ namespace R8Calendar.Converter
                 int currentPersianMonth;
                 int currentPersianDay;
 
-                var persianate = new PersianDateTime(neededDay);
+                var persianate = PersianDateTime.GetFromDateTime(neededDay);
 
                 switch (calendarType)
                 {
                     case CalendarTypes.Persian:
                         currentMonth = persianate.Month;
-                        currentDay = persianate.DayOfMonth;
+                        currentDay = persianate.Day;
                         break;
 
                     case CalendarTypes.Hijri:
@@ -162,7 +162,7 @@ namespace R8Calendar.Converter
                 if (calendarType != CalendarTypes.Persian)
                 {
                     currentPersianMonth = persianate.Month;
-                    currentPersianDay = persianate.DayOfMonth;
+                    currentPersianDay = persianate.Day;
                 }
                 else
                 {

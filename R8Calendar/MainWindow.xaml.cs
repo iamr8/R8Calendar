@@ -80,7 +80,7 @@ namespace R8Calendar
             CalendarDays.Children.Clear();
 
             targetDateTime ??= NowDateTime;
-            var persianCalendar = new PersianDateTime(targetDateTime.Value);
+            var persianCalendar = PersianDateTime.GetFromDateTime(targetDateTime.Value);
 
             var persianYear = persianCalendar.Year;
             var persianMonth = persianCalendar.Month;
@@ -95,7 +95,7 @@ namespace R8Calendar
                 var day = dayIndex + 1;
                 var dayModel = Months.FirstOrDefault(x => x.Key == persianMonth).Value.Find(x => x.DayOfMonth == day);
 
-                var currentDate = new PersianDateTime(new DateTime(targetDateTime.Value.Year, targetDateTime.Value.Month, day));
+                var currentDate = PersianDateTime.GetFromDateTime(new DateTime(targetDateTime.Value.Year, targetDateTime.Value.Month, day));
                 var persianDayOfWeek = (DayOfWeekConverter.PersianDayOfWeek)currentDate.DayOfWeek;
 
                 DesignDayButton(CalendarDays, persianYear, persianMonth, day, persianDayOfWeek, dayModel);
@@ -114,10 +114,10 @@ namespace R8Calendar
 
         private void SetTodayDate()
         {
-            var persianCalendar = new PersianDateTime(DateTime.Now);
+            var persianCalendar = PersianDateTime.GetFromDateTime(DateTime.Now);
             var persianTodayYear = persianCalendar.Year;
             var persianTodayMonth = persianCalendar.Month;
-            var persianTodayDay = persianCalendar.DayOfMonth;
+            var persianTodayDay = persianCalendar.Day;
             var persianTodayDayOfWeek = persianCalendar.DayOfWeek;
 
             TodayDate.Content =
