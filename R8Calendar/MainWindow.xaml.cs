@@ -1,9 +1,9 @@
 ﻿using R8.Lib;
-using R8.PanelStack;
 
 using R8Calendar.Blur;
 using R8Calendar.Converter;
 using R8Calendar.Models;
+using R8Calendar.PanelWrapper;
 using R8Calendar.Utils;
 
 using System;

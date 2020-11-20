@@ -16,11 +16,6 @@
     <None Remove="eventall.json" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="R8.PanelStack">
-      <HintPath>..\..\..\PanelWrapper\PanelWrapper\PanelWrapper\bin\Debug\R8.PanelStack.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Blur\Noise.ps" />
   </ItemGroup>
   <ItemGroup>
