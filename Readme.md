@@ -1,11 +1,7 @@
 # R8.Calendar
-An sticky desktop calendar written in WPF using ~~.Net Framework 4.6.1~~ .Net Core 3.1
+An sticky desktop calendar written in WPF using .Net Core 3.1
 
-
-## Ported using following tool
-1. `dotnet tool install -g try-convert`
-2. `try-convert -p R8.Calendar.csproj`
-
+![.NET Core Desktop](https://github.com/iamr8/R8Calendar/workflows/.NET%20Core%20Desktop/badge.svg)
 ## Preview
 ![preview](assets/preview.png)
 
